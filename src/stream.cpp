@@ -1743,56 +1743,58 @@ namespace stream {
   }
 
   int recv_ping(session_t *session, decltype(broadcast)::ptr_t ref, socket_e type, std::string_view expected_payload, udp::endpoint &peer, std::chrono::milliseconds timeout) {
-    auto messages = std::make_shared<message_queue_t::element_type>(30);
-    av_session_id_t session_id = std::string {expected_payload};
+    return 0; // ICMP doesnt work through port forwarding so we need to disable this until we can find a better solution
+    
+    // auto messages = std::make_shared<message_queue_t::element_type>(30);
+    // av_session_id_t session_id = std::string {expected_payload};
 
-    // Only allow matches on the peer address for legacy clients
-    if (!(session->config.mlFeatureFlags & ML_FF_SESSION_ID_V1)) {
-      ref->message_queue_queue->raise(type, peer.address(), messages);
-    }
-    ref->message_queue_queue->raise(type, session_id, messages);
+    // // Only allow matches on the peer address for legacy clients
+    // if (!(session->config.mlFeatureFlags & ML_FF_SESSION_ID_V1)) {
+    //   ref->message_queue_queue->raise(type, peer.address(), messages);
+    // }
+    // ref->message_queue_queue->raise(type, session_id, messages);
 
-    auto fg = util::fail_guard([&]() {
-      messages->stop();
+    // auto fg = util::fail_guard([&]() {
+    //   messages->stop();
 
-      // remove message queue from session
-      if (!(session->config.mlFeatureFlags & ML_FF_SESSION_ID_V1)) {
-        ref->message_queue_queue->raise(type, peer.address(), nullptr);
-      }
-      ref->message_queue_queue->raise(type, session_id, nullptr);
-    });
+    //   // remove message queue from session
+    //   if (!(session->config.mlFeatureFlags & ML_FF_SESSION_ID_V1)) {
+    //     ref->message_queue_queue->raise(type, peer.address(), nullptr);
+    //   }
+    //   ref->message_queue_queue->raise(type, session_id, nullptr);
+    // });
 
-    auto start_time = std::chrono::steady_clock::now();
-    auto current_time = start_time;
+    // auto start_time = std::chrono::steady_clock::now();
+    // auto current_time = start_time;
 
-    while (current_time - start_time < config::stream.ping_timeout) {
-      auto delta_time = current_time - start_time;
+    // while (current_time - start_time < config::stream.ping_timeout) {
+    //   auto delta_time = current_time - start_time;
 
-      auto msg_opt = messages->pop(config::stream.ping_timeout - delta_time);
-      if (!msg_opt) {
-        break;
-      }
+    //   auto msg_opt = messages->pop(config::stream.ping_timeout - delta_time);
+    //   if (!msg_opt) {
+    //     break;
+    //   }
 
-      TUPLE_2D_REF(recv_peer, msg, *msg_opt);
-      if (msg.find(expected_payload) != std::string::npos) {
-        // Match the new PING payload format
-        BOOST_LOG(debug) << "Received ping [v2] from "sv << recv_peer.address() << ':' << recv_peer.port() << " ["sv << util::hex_vec(msg) << ']';
-      } else if (!(session->config.mlFeatureFlags & ML_FF_SESSION_ID_V1) && msg == "PING"sv) {
-        // Match the legacy fixed PING payload only if the new type is not supported
-        BOOST_LOG(debug) << "Received ping [v1] from "sv << recv_peer.address() << ':' << recv_peer.port() << " ["sv << util::hex_vec(msg) << ']';
-      } else {
-        BOOST_LOG(debug) << "Received non-ping from "sv << recv_peer.address() << ':' << recv_peer.port() << " ["sv << util::hex_vec(msg) << ']';
-        current_time = std::chrono::steady_clock::now();
-        continue;
-      }
+    //   TUPLE_2D_REF(recv_peer, msg, *msg_opt);
+    //   if (msg.find(expected_payload) != std::string::npos) {
+    //     // Match the new PING payload format
+    //     BOOST_LOG(debug) << "Received ping [v2] from "sv << recv_peer.address() << ':' << recv_peer.port() << " ["sv << util::hex_vec(msg) << ']';
+    //   } else if (!(session->config.mlFeatureFlags & ML_FF_SESSION_ID_V1) && msg == "PING"sv) {
+    //     // Match the legacy fixed PING payload only if the new type is not supported
+    //     BOOST_LOG(debug) << "Received ping [v1] from "sv << recv_peer.address() << ':' << recv_peer.port() << " ["sv << util::hex_vec(msg) << ']';
+    //   } else {
+    //     BOOST_LOG(debug) << "Received non-ping from "sv << recv_peer.address() << ':' << recv_peer.port() << " ["sv << util::hex_vec(msg) << ']';
+    //     current_time = std::chrono::steady_clock::now();
+    //     continue;
+    //   }
 
-      // Update connection details.
-      peer = recv_peer;
-      return 0;
-    }
+    //   // Update connection details.
+    //   peer = recv_peer;
+    //   return 0;
+    // }
 
-    BOOST_LOG(error) << "Initial Ping Timeout"sv;
-    return -1;
+    // BOOST_LOG(error) << "Initial Ping Timeout"sv;
+    // return -1;
   }
 
   void videoThread(session_t *session) {
